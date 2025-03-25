@@ -1,0 +1,20 @@
+version: '3.7'
+services:
+#   # MQTT Broker (Eclipse Mosquitto)
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto_lidar
+    user: "${UID}:${GID}"  # Run as the current user from the host
+    ports:
+      - "2883:1883"   # Expose MQTT broker
+      # - "9001:9001"   # WebSocket (optional, if you need it)
+    volumes:
+      - "./mosquitto/config:/mosquitto/config/"
+      - "./mosquitto/logs:/mosquitto/logs"
+      - "./mosquitto/data:/mosquitto/data"
+      - "./mosquitto/log:/mosquitto/log"
+    # If you don't have a custom mosquitto.conf,
+    # you can remove the volumes section. Or place a minimal config if needed.
+    stdin_open: true
+    tty: true
+    restart: unless-stopped

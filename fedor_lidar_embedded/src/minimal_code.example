@@ -1,0 +1,88 @@
+#include <Arduino.h>
+
+#define TF02_RX_PIN 16
+#define TF02_TX_PIN 17
+
+HardwareSerial LidarSerial(2);
+
+bool readTF02ProData(uint16_t &distance, uint16_t &strength, float &temperature) {
+  static uint8_t buf[9];
+
+  // We need at least 9 bytes available to parse a full frame
+  if (LidarSerial.available() < 9) {
+    return false;
+  }
+
+  // Search for the frame header 0x59 0x59
+  while (LidarSerial.available() >= 9) {
+    if ((uint8_t)LidarSerial.peek() == 0x59) {
+      buf[0] = LidarSerial.read();
+      if (LidarSerial.peek() == 0x59) {
+        buf[1] = LidarSerial.read();
+
+        // Read the remaining 7 bytes
+        for (int i = 2; i < 9; i++) {
+          buf[i] = LidarSerial.read();
+        }
+
+        // Verify checksum (sum of bytes [0..7], then & 0xFF, should match buf[8])
+        uint16_t sum = 0;
+        for (int i = 0; i < 8; i++) {
+          sum += buf[i];
+        }
+        sum &= 0xFF;
+
+        if (sum == buf[8]) {
+          // Parse distance (cm)
+          distance = (uint16_t)(buf[2] | (buf[3] << 8));
+
+          // Parse signal strength
+          strength = (uint16_t)(buf[4] | (buf[5] << 8));
+
+          // Parse temperature
+          // According to your document: temperature(°C) = Temp / 8 - 256
+          uint16_t tempRaw = (uint16_t)(buf[6] | (buf[7] << 8));
+          temperature = (tempRaw / 8.0f) - 256.0f;
+
+          return true;  // Successfully parsed a valid frame
+        } else {
+          // If checksum fails, continue searching
+          continue;
+        }
+      }
+    } else {
+      // Discard this byte and keep looking for 0x59
+      LidarSerial.read();
+    }
+  }
+
+  return false;
+}
+
+void setup() {
+  Serial.begin(115200);
+  // Initialize hardware serial for the TF02-Pro
+  LidarSerial.begin(115200, SERIAL_8N1, TF02_RX_PIN, TF02_TX_PIN);
+
+  Serial.println("TF02-Pro LiDAR test initialized.");
+  delay(1000);
+}
+
+void loop() {
+  static uint16_t distance = 0;
+  static uint16_t strength = 0;
+  static float temperature = 0.0f;
+
+  // Attempt to read data frame from TF02-Pro
+  if (readTF02ProData(distance, strength, temperature)) {
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.print(" cm, Strength: ");
+    Serial.print(strength);
+    Serial.print(", Temp: ");
+    Serial.print(temperature);
+    Serial.println(" °C");
+  }
+
+  delay(10);  // Adjust as needed
+}

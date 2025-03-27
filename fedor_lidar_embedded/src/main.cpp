@@ -2,9 +2,8 @@
 #include <WiFi.h>
 #include <AsyncMqttClient.h>
 
-// ----- WiFi Settings -----
-#define WIFI_SSID       "TinyFox"
-#define WIFI_PASS       "cookie_the_fox"
+// Include WiFi configuration
+#include "wifi_config.h"  // Contains WIFI_SSID and WIFI_PASS
 
 // ----- MQTT Settings -----
 #define MQTT_HOST       IPAddress(192, 168, 8, 212)  // or use your broker IP
@@ -20,7 +19,7 @@
 #define LIDAR_RX_PIN    16
 #define LIDAR_TX_PIN    17
 
-// Create an instance for Lidar on UART1
+// Create an instance for Lidar on UART2
 HardwareSerial LidarSerial(2);  // Use UART2 on the ESP32
 
 // ----- Global MQTT Client & Timers -----
@@ -28,9 +27,17 @@ AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 
+// ----- Global variables for Lidar data -----
+SemaphoreHandle_t lidarDataMutex;  // Mutex for protecting access to shared data
+volatile uint16_t distance = 0;
+volatile uint16_t strength = 0;
+volatile float temperature = 0.0f;
+
 // ----- Forward Declarations -----
 void connectToMqtt();
 void connectToWifi();
+void lidarTask(void *parameter);
+void sendLidarDataTask(void *parameter);
 
 // ----- MQTT Callbacks -----
 void onMqttConnect(bool sessionPresent) {
@@ -59,7 +66,6 @@ void WiFiEvent(WiFiEvent_t event) {
       break;
   }
 }
-
 
 bool readTF02ProData(uint16_t &distance, uint16_t &strength, float &temperature) {
   static uint8_t buf[9];
@@ -117,32 +123,62 @@ bool readTF02ProData(uint16_t &distance, uint16_t &strength, float &temperature)
 
 // ----- FreeRTOS Task: LIDAR Reader -----
 void lidarTask(void *parameter) {
-
-  static uint16_t distance = 0;
-  static uint16_t strength = 0;
-  static float temperature = 0.0f;
+  uint16_t localDistance = 0;
+  uint16_t localStrength = 0;
+  float localTemperature = 0.0f;
   
   for (;;) {
     // Attempt to read data frame from TF02-Pro
-    if (readTF02ProData(distance, strength, temperature)) {
-      // Print out the results
-      Serial.print("Distance: ");
-      Serial.print(distance);
-      Serial.print(" cm, Strength: ");
-      Serial.print(strength);
-      Serial.print(", Temp: ");
-      Serial.print(temperature);
-      Serial.println(" °C");
+    if (readTF02ProData(localDistance, localStrength, localTemperature)) {
+      // Take mutex before updating shared variables
+      if (xSemaphoreTake(lidarDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        distance = localDistance;
+        strength = localStrength;
+        temperature = localTemperature;
+        xSemaphoreGive(lidarDataMutex);
+      }
     }
-    if (mqttClient.connected()) {
-      char payload[10];
-      sprintf(payload, "%d", distance);
-      mqttClient.publish(TOPIC_LIDAR, 0, false, payload);
-    }
-    vTaskDelay(200 / portTICK_PERIOD_MS); // Short delay to yield
-    }
+    
+    // Short delay to allow other tasks to run, but keep reading frequently
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
+}
 
+// ----- FreeRTOS Task: Send Lidar Data -----
+void sendLidarDataTask(void *parameter) {
+  uint16_t localDistance = 0;
+  uint16_t localStrength = 0;
+  float localTemperature = 0.0f;
+  
+  for (;;) {
+    // Get the latest data with mutex protection
+    if (xSemaphoreTake(lidarDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+      localDistance = distance;
+      localStrength = strength;
+      localTemperature = temperature;
+      xSemaphoreGive(lidarDataMutex);
+      
+      // Print out the results to Serial
+      Serial.print("Distance: ");
+      Serial.print(localDistance);
+      Serial.print(" cm, Strength: ");
+      Serial.print(localStrength);
+      Serial.print(", Temp: ");
+      Serial.print(localTemperature);
+      Serial.println(" °C");
+      
+      // Send to MQTT if connected
+      if (mqttClient.connected()) {
+        char payload[10];
+        sprintf(payload, "%d", localDistance);
+        mqttClient.publish(TOPIC_LIDAR, 0, false, payload);
+      }
+    }
+    
+    // Send data at a lower frequency (e.g., every 200ms)
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+  }
+}
 
 // ----- Setup Function -----
 void setup() {
@@ -150,9 +186,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP32 LIDAR MQTT Demo");
 
-  // Initialize Lidar serial on UART1 with specified pins
+  // Initialize Lidar serial on UART2 with specified pins
   LidarSerial.begin(LIDAR_BAUD, SERIAL_8N1, LIDAR_RX_PIN, LIDAR_TX_PIN);
 
+  // Create mutex for protecting shared data
+  lidarDataMutex = xSemaphoreCreateMutex();
+  
   // Setup WiFi events and connect
   WiFi.onEvent(WiFiEvent);
   connectToWifi();
@@ -168,14 +207,23 @@ void setup() {
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, 
     [](TimerHandle_t xTimer) { connectToWifi(); });
 
-  // Create the FreeRTOS task for reading Lidar data
+  // Create the FreeRTOS tasks
   xTaskCreate(
-    lidarTask,       // Task function
-    "Lidar Task",    // Task name
-    4096,            // Stack size (in words)
-    NULL,            // Parameter to pass
-    1,               // Priority
-    NULL             // Task handle
+    lidarTask,           // Task function
+    "Lidar Read Task",   // Task name
+    4096,                // Stack size (in words)
+    NULL,                // Parameter to pass
+    2,                   // Priority (higher than send task)
+    NULL                 // Task handle
+  );
+  
+  xTaskCreate(
+    sendLidarDataTask,   // Task function
+    "Send Data Task",    // Task name
+    4096,                // Stack size (in words)
+    NULL,                // Parameter to pass
+    1,                   // Priority (lower than read task)
+    NULL                 // Task handle
   );
 }
 

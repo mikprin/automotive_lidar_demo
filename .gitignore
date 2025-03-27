@@ -1,0 +1,6 @@
+fedor_lidar_embedded/.pio
+fedor_lidar_embedded/.vscode/.browse.c_cpp.db*
+fedor_lidar_embedded/.vscode/c_cpp_properties.json
+fedor_lidar_embedded/.vscode/launch.json
+fedor_lidar_embedded/.vscode/ipch
+fedor_lidar_embedded/include/wifi_config.h

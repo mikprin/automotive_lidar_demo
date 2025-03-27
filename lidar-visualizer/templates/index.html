@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Moment.js for time formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-blue-400">Lidar Data Visualizer</h1>
+            <p class="text-gray-400 mt-2">Real-time distance monitoring visualization</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Current Reading Card -->
+            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-blue-400 mb-4">Current Reading</h2>
+                <div class="flex items-center justify-center h-32">
+                    <div class="text-center">
+                        <div id="current-value" class="text-5xl font-bold text-white">--</div>
+                        <div class="text-gray-400 mt-2">centimeters</div>
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-gray-400">
+                    <p>Last Updated: <span id="last-updated">--</span></p>
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-blue-400 mb-4">Statistics</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-sm text-gray-400">Minimum</div>
+                        <div id="min-value" class="text-2xl font-semibold">--</div>
+                    </div>
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-sm text-gray-400">Maximum</div>
+                        <div id="max-value" class="text-2xl font-semibold">--</div>
+                    </div>
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-sm text-gray-400">Average</div>
+                        <div id="avg-value" class="text-2xl font-semibold">--</div>
+                    </div>
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-sm text-gray-400">Readings</div>
+                        <div id="reading-count" class="text-2xl font-semibold">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-blue-400 mb-4">System Status</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Connection:</span>
+                        <span id="connection-status" class="px-3 py-1 rounded-full text-sm bg-green-900 text-green-300">Connected</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Data Flow:</span>
+                        <span id="data-flow-status" class="px-3 py-1 rounded-full text-sm bg-blue-900 text-blue-300">Active</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Alert Status:</span>
+                        <span id="alert-status" class="px-3 py-1 rounded-full text-sm bg-gray-700 text-gray-300">Normal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="mt-8 bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-blue-400 mb-4">Distance History</h2>
+            <div class="h-80">
+                <canvas id="distanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="mt-8 bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-blue-400 mb-4">Recent Readings</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Distance (cm)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="divide-y divide-gray-700">
+                        <!-- Data rows will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gray-800 mt-12 py-6">
+        <div class="container mx-auto px-4 text-center text-gray-400 text-sm">
+            <p>Lidar Data Visualizer &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+</body>
+</html>

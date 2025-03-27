@@ -1,0 +1,201 @@
+/**
+ * Lidar Data Visualizer - Frontend Application
+ */
+
+// Configuration
+const config = {
+    wsUrl: window.location.protocol === 'https:' 
+      ? `wss://${window.location.host}/ws` 
+      : `ws://${window.location.host}/ws`,
+    apiUrl: '/api',
+    maxDataPoints: 100,
+    updateInterval: 1000,
+    alertThresholds: {
+      close: 30,    // cm - Alert when object is too close
+      far: 300      // cm - Alert when object is too far
+    }
+  };
+  
+  // Application state
+  const state = {
+    connected: false,
+    dataPoints: [],
+    socket: null,
+    lastDataTimestamp: null,
+    statistics: {
+      min: null,
+      max: null,
+      avg: null,
+      count: 0
+    }
+  };
+  
+  // DOM elements
+  const elements = {
+    currentValue: document.getElementById('current-value'),
+    lastUpdated: document.getElementById('last-updated'),
+    minValue: document.getElementById('min-value'),
+    maxValue: document.getElementById('max-value'),
+    avgValue: document.getElementById('avg-value'),
+    readingCount: document.getElementById('reading-count'),
+    connectionStatus: document.getElementById('connection-status'),
+    dataFlowStatus: document.getElementById('data-flow-status'),
+    alertStatus: document.getElementById('alert-status'),
+    dataTableBody: document.getElementById('data-table-body'),
+    distanceChart: document.getElementById('distanceChart')
+  };
+  
+  // Initialize Chart.js
+  const ctx = elements.distanceChart.getContext('2d');
+  const distanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Distance (cm)',
+        data: [],
+        borderColor: '#4f6df5',
+        backgroundColor: 'rgba(79, 109, 245, 0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#4f6df5',
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: '#a0a0a0'
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: '#1e1e1e',
+          titleColor: '#e1e1e1',
+          bodyColor: '#e1e1e1',
+          borderColor: 'rgba(79, 109, 245, 0.3)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#a0a0a0'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#a0a0a0'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.05)'
+          }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        intersect: false
+      },
+      animation: {
+        duration: 300
+      }
+    }
+  });
+  
+  // Connect to WebSocket
+  function connectWebSocket() {
+    if (state.socket) {
+      state.socket.close();
+    }
+  
+    state.socket = new WebSocket(config.wsUrl);
+    
+    // WebSocket event handlers
+    state.socket.onopen = () => {
+      console.log('WebSocket connected');
+      state.connected = true;
+      updateConnectionStatus(true);
+    };
+    
+    state.socket.onclose = () => {
+      console.log('WebSocket disconnected');
+      state.connected = false;
+      updateConnectionStatus(false);
+      // Try to reconnect after a delay
+      setTimeout(connectWebSocket, 3000);
+    };
+    
+    state.socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      state.connected = false;
+      updateConnectionStatus(false);
+    };
+    
+    state.socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle different types of messages
+        if (data.type === 'history') {
+          // Received historical data
+          processHistoricalData(data.data);
+        } else {
+          // Received a new data point
+          processNewDataPoint(data);
+        }
+        
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+  }
+  
+  // Process historical data
+  function processHistoricalData(history) {
+    if (!history || !history.length) return;
+    
+    // Store the data points
+    state.dataPoints = history;
+    
+    // Update the chart with all data
+    updateChart();
+    
+    // Update statistics
+    calculateStatistics();
+    
+    // Update the table with recent entries
+    updateDataTable();
+    
+    // Update the latest value display
+    const latestData = history[history.length - 1];
+    updateCurrentValueDisplay(latestData);
+  }
+  
+  // Process a new data point
+  function processNewDataPoint(data) {
+    // Add to the data points array
+    state.dataPoints.push(data);
+    
+    // Keep array size within limits
+    if (state.dataPoints.length > config.maxDataPoints) {
+      state.dataPoints.shift();
+    }
+    
+    // Update last data timestamp
+    state.lastDataTimestamp = new Date();
+    
+    // Update data flow status
+    updateDataFlowStatus(true);
+    
+    // Update the current value display

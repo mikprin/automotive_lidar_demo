@@ -1,0 +1,156 @@
+/* Custom styles for Lidar Data Visualizer */
+
+/* Dark theme customization */
+:root {
+    --primary-bg: #121212;
+    --secondary-bg: #1e1e1e;
+    --card-bg: #252525;
+    --primary-text: #e1e1e1;
+    --secondary-text: #a0a0a0;
+    --accent-color: #4f6df5;
+    --danger-color: #f56565;
+    --success-color: #48bb78;
+    --warning-color: #ed8936;
+  }
+  
+  /* Smooth transitions */
+  * {
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  }
+  
+  body {
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  
+  /* Card hover effects */
+  .bg-gray-800 {
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .bg-gray-800:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Status indicators */
+  .status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .status-indicator.online {
+    background-color: var(--success-color);
+  }
+  
+  .status-indicator.offline {
+    background-color: var(--danger-color);
+  }
+  
+  .status-indicator.warning {
+    background-color: var(--warning-color);
+  }
+  
+  /* Data pulse animation */
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(79, 109, 245, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(79, 109, 245, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(79, 109, 245, 0);
+    }
+  }
+  
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  
+  /* Alert styles */
+  .alert-normal {
+    background-color: rgba(72, 187, 120, 0.2);
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .alert-warning {
+    background-color: rgba(237, 137, 54, 0.2);
+    border-left: 4px solid var(--warning-color);
+  }
+  
+  .alert-danger {
+    background-color: rgba(245, 101, 101, 0.2);
+    border-left: 4px solid var(--danger-color);
+  }
+  
+  /* Chart tooltip styling */
+  .chartjs-tooltip {
+    background-color: var(--card-bg);
+    border-radius: 4px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    color: var(--primary-text);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  
+  /* Value changes animation */
+  .value-change {
+    animation: highlight 1.5s ease-out;
+  }
+  
+  @keyframes highlight {
+    0% {
+      color: var(--accent-color);
+      text-shadow: 0 0 8px rgba(79, 109, 245, 0.7);
+    }
+    100% {
+      color: var(--primary-text);
+      text-shadow: none;
+    }
+  }
+  
+  /* Loading spinner */
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(79, 109, 245, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--accent-color);
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .container {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    
+    .text-5xl {
+      font-size: 2.5rem;
+    }
+  }
+  
+  /* Table row hover effect */
+  tbody tr {
+    transition: background-color 0.2s;
+  }
+  
+  tbody tr:hover {
+    background-color: rgba(79, 109, 245, 0.1);
+  }

@@ -19,6 +19,8 @@
 #define LIDAR_RX_PIN    16
 #define LIDAR_TX_PIN    17
 
+#define DATA_SEND_PERIOD_ms 400  // Send data every 200ms
+
 // Create an instance for Lidar on UART2
 HardwareSerial LidarSerial(2);  // Use UART2 on the ESP32
 
@@ -176,7 +178,7 @@ void sendLidarDataTask(void *parameter) {
     }
     
     // Send data at a lower frequency (e.g., every 200ms)
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+    vTaskDelay(DATA_SEND_PERIOD_ms / portTICK_PERIOD_MS);
   }
 }
 

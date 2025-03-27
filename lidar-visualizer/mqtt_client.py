@@ -37,7 +37,7 @@ def on_message(client, userdata, msg):
     """Callback for when a message is received from the MQTT broker."""
     try:
         payload = msg.payload.decode()
-        logger.info(f"Received message on {msg.topic}: {payload}")
+        # logger.info(f"Received message on {msg.topic}: {payload}")
         
         # Create data point with timestamp
         timestamp = datetime.now().isoformat()
